@@ -1,0 +1,211 @@
+FUNCTION_BLOCK robot
+
+// Sensores de entrada robo
+VAR_INPUT				
+	esquerda         : REAL;
+    meia_esquerda    : REAL;
+    frente           : REAL;
+    meia_direita     : REAL;
+    direita          : REAL;
+END_VAR
+
+// velocidade motores saida
+VAR_OUTPUT				
+	motor_esquerdo : REAL;
+	motor_direito  : REAL;
+END_VAR
+
+// Fuzzificacao das variaveis (entrada)
+FUZZIFY esquerda
+    TERM muito_perto := TRIAN 0 0 1;
+	TERM perto       := TRIAN 0.5 1.5 2.5;
+	TERM longe       := TRIAN 2 3 3; 
+END_FUZZIFY
+
+FUZZIFY meia_esquerda			
+    TERM muito_perto := TRIAN 0 0 1;
+	TERM perto       := TRIAN 0.5 1.5 2.5;
+	TERM longe       := TRIAN 2 3 3;
+END_FUZZIFY
+
+FUZZIFY frente			
+    TERM muito_perto := TRIAN 0 0 1;
+	TERM perto       := TRIAN 0.5 1.5 2.5;
+	TERM longe       := TRIAN 2 3 3; 
+END_FUZZIFY
+
+FUZZIFY meia_direita			
+    TERM muito_perto := TRIAN 0 0 1;
+	TERM perto       := TRIAN 0.5 1.5 2.5;
+	TERM longe       := TRIAN 2 3 3; 
+END_FUZZIFY
+
+FUZZIFY direita			
+    TERM muito_perto := TRIAN 0 0 1;
+	TERM perto       := TRIAN 0.5 1.5 2.5;
+	TERM longe       := TRIAN 2 3 3; 
+END_FUZZIFY
+
+FUZZIFY esquerda			
+    TERM muito_perto := TRIAN 0 0 1;
+	TERM perto       := TRIAN 0.5 1.5 2.5;
+	TERM longe       := TRIAN 2 3 3; 
+END_FUZZIFY
+
+// Defuzzificacao para determinar velocidade do motor(saidas)
+DEFUZZIFY motor_esquerdo			
+    TERM mover_para_tras   :=  TRIAN -2.5 -2.5 -1;
+	TERM parar             :=  TRIAN -1.5 0 1.5;
+    TERM mover_para_frente :=  TRIAN 1 2.5 2.5;
+	METHOD : COG; 
+	DEFAULT := 0;         // defuzzificacao default
+END_DEFUZZIFY
+
+DEFUZZIFY motor_direito			
+    TERM mover_para_tras   :=  TRIAN -2.5 -2.5 -1;
+	TERM parar             :=  TRIAN -1.5 0 1.5;
+    TERM mover_para_frente :=  TRIAN 1 2.5 2.5;
+	METHOD : COG;
+	DEFAULT := 0;
+END_DEFUZZIFY
+
+// Regras de Inferencia ...............................................................................................
+RULEBLOCK rules
+	AND  : MIN;	// Use 'min' for 'and' (also implicit use
+	            //’max’ for ’or’ to fulfill DeMorgan’s Law)
+	ACT  : MIN;	// Use 'min' activation method
+	ACCU : MAX;	// Use 'max' accumulation method
+
+    // andar para frente
+	RULE 1 : IF esquerda IS longe AND meia_esquerda IS longe AND frente IS longe 
+             AND direita IS longe AND meia_direita IS longe  
+             THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_frente;
+     
+	RULE 2 : IF esquerda IS longe AND meia_esquerda IS longe AND (frente IS perto OR frente IS muito_perto)
+             AND direita IS longe AND meia_direita IS longe  
+             THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_tras;
+             
+	RULE 3 : IF esquerda IS longe AND meia_esquerda IS perto AND frente IS muito_perto 
+             AND direita IS longe AND meia_direita IS perto  
+             THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_tras;
+             
+	RULE 4 : IF esquerda IS longe AND meia_esquerda IS longe AND frente IS muito_perto 
+             AND direita IS longe AND meia_direita IS perto  
+             THEN motor_esquerdo IS parar, motor_direito IS mover_para_frente;
+             
+	RULE 5 : IF esquerda IS longe AND meia_esquerda IS perto AND frente IS muito_perto 
+             AND direita IS longe AND meia_direita IS longe  
+             THEN motor_esquerdo IS mover_para_frente, motor_direito IS parar;
+             
+	RULE 6 : IF esquerda IS longe AND meia_esquerda IS longe AND frente IS muito_perto 
+             AND direita IS longe AND meia_direita IS muito_perto  
+             THEN motor_esquerdo IS parar, motor_direito IS mover_para_frente;
+             
+	RULE 7 : IF esquerda IS longe AND meia_esquerda IS muito_perto AND frente IS muito_perto 
+             AND direita IS longe AND meia_direita IS longe  
+             THEN motor_esquerdo IS mover_para_frente, motor_direito IS parar;
+             
+	RULE 8 : IF esquerda IS muito_perto AND meia_esquerda IS muito_perto AND frente IS muito_perto 
+             AND direita IS muito_perto AND meia_direita IS muito_perto  
+             THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_tras;
+             
+	RULE 9 : IF esquerda IS perto AND meia_esquerda IS perto AND frente IS perto 
+             AND direita IS perto AND meia_direita IS perto  
+             THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_tras;
+             
+    // obstaculo a DIREITA           
+    RULE 10 : IF direita IS muito_perto AND meia_direita IS perto AND frente IS muito_perto
+             AND meia_esquerda IS perto AND esquerda IS longe 
+             THEN motor_esquerdo IS mover_para_tras, motor_direito IS mover_para_frente; 
+             
+    RULE 11 : IF (direita IS perto OR direita IS muito_perto) AND
+    		 (meia_direita IS perto OR meia_direita IS muito_perto) AND frente IS perto
+             AND meia_esquerda IS longe AND esquerda IS longe 
+             THEN motor_esquerdo IS mover_para_tras, motor_direito IS mover_para_frente; 
+             
+    RULE 12 : IF (direita IS perto OR direita IS muito_perto) AND 
+			(meia_direita IS perto OR meia_direita IS muito_perto) AND frente IS longe
+         	AND meia_esquerda IS longe AND esquerda IS longe 
+         	THEN motor_esquerdo IS parar, motor_direito IS mover_para_frente;
+         	
+    RULE 13 : IF (direita IS perto OR direita IS muito_perto) AND meia_direita IS longe AND frente IS longe
+             AND meia_esquerda IS longe AND esquerda IS longe 
+             THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_frente; 
+             
+    RULE 14 : IF direita IS perto AND meia_direita IS longe AND frente IS perto
+             AND meia_esquerda IS longe AND esquerda IS longe 
+             THEN motor_esquerdo IS mover_para_tras, motor_direito IS mover_para_frente; 
+             
+    RULE 15 : IF direita IS longe AND meia_direita IS perto AND frente IS longe
+             AND meia_esquerda IS longe AND esquerda IS longe 
+             THEN motor_esquerdo IS mover_para_tras, motor_direito IS mover_para_frente; 
+         	
+    // obstaculo a ESQUERDA           
+    RULE 16 : IF direita IS perto AND meia_direita IS longe AND frente IS muito_perto
+             AND meia_esquerda IS muito_perto AND esquerda IS perto 
+             THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_tras; 
+       
+    RULE 17 : IF (esquerda IS perto OR esquerda IS muito_perto) AND 
+    		(meia_esquerda IS perto OR meia_esquerda IS muito_perto) AND frente IS perto
+            AND meia_direita IS longe AND direita IS longe 
+            THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_tras; 
+             
+    RULE 18 : IF (esquerda IS perto OR esquerda IS muito_perto) AND
+    		(meia_esquerda IS perto OR meia_esquerda IS muito_perto) AND frente IS longe
+         	AND meia_direita IS longe AND direita IS longe 
+         	THEN motor_esquerdo IS mover_para_frente, motor_direito IS parar;
+         	
+    RULE 19 : IF (esquerda IS perto OR esquerda IS muito_perto) AND meia_esquerda IS longe AND frente IS longe
+             AND meia_direita IS longe AND direita IS longe 
+             THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_frente; 
+         					 
+	RULE 20 : IF esquerda IS perto AND meia_esquerda IS longe AND frente IS perto
+             AND meia_direita IS longe AND direita IS longe 
+             THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_tras; 
+             
+    RULE 21 : IF esquerda IS longe AND meia_esquerda IS perto AND frente IS perto
+             AND meia_direita IS perto AND direita IS perto 
+             THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_tras; 
+             
+    //ambos
+	RULE 22 : IF (esquerda IS perto OR direita IS muito_perto) AND meia_esquerda IS longe AND frente IS longe 
+             AND (direita IS perto OR direita IS muito_perto) AND meia_direita IS longe  
+             THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_frente;
+          
+	RULE 23 : IF esquerda IS NOT longe AND meia_esquerda IS NOT longe AND frente IS NOT longe 
+             AND direita IS longe AND meia_direita IS NOT longe  
+             THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_tras;
+             
+	RULE 24 : IF esquerda IS longe AND meia_esquerda IS NOT longe AND frente IS NOT longe 
+             AND direita IS NOT longe AND meia_direita IS NOT longe  
+             THEN motor_esquerdo IS mover_para_tras, motor_direito IS mover_para_frente;     
+             
+             
+    RULE 25 : IF esquerda IS NOT longe AND meia_esquerda IS NOT longe AND frente IS NOT longe 
+             AND direita IS longe AND meia_direita IS longe  
+             THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_tras;
+             
+	RULE 26 : IF esquerda IS longe AND meia_esquerda IS longe AND frente IS NOT longe 
+             AND direita IS NOT longe AND meia_direita IS NOT longe  
+             THEN motor_esquerdo IS mover_para_tras, motor_direito IS mover_para_frente; 
+             
+    RULE 27 : IF esquerda IS longe AND meia_esquerda IS perto AND frente IS perto
+             AND direita IS longe AND meia_direita IS longe  
+             THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_tras; 
+             
+    RULE 28 : IF esquerda IS longe AND meia_esquerda IS longe AND frente IS perto
+             AND direita IS longe AND meia_direita IS perto  
+             THEN motor_esquerdo IS mover_para_tras, motor_direito IS mover_para_frente;       
+ 
+    RULE 29 : IF esquerda IS longe AND (meia_esquerda IS muito_perto OR meia_esquerda IS perto)  AND frente IS longe
+             AND direita IS longe AND meia_direita IS longe  
+             THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_tras;    
+    
+    RULE 30 : IF esquerda IS longe AND meia_esquerda IS longe AND frente IS longe
+             AND direita IS longe AND (meia_direita IS muito_perto OR meia_direita IS perto) 
+             THEN motor_esquerdo IS mover_para_tras, motor_direito IS mover_para_frente;                                 
+            
+             
+END_RULEBLOCK
+
+END_FUNCTION_BLOCK

@@ -1,0 +1,103 @@
+FUNCTION_BLOCK seekTarget
+
+// destino e angulo de direcao do alvo 
+VAR_INPUT				
+	destino_distancia : REAL;
+    direcao_alvo      : REAL;
+END_VAR
+
+// velocidade dos motores
+VAR_OUTPUT				
+	motor_esquerdo : REAL;
+	motor_direito  : REAL;
+END_VAR
+
+// Fuzzificacao - distancia do alvo
+FUZZIFY destino_distancia
+    TERM muito_perto := TRIAN 0 0 1;
+	TERM perto       := TRIAN 0.5 1.5 2.5;
+	TERM longe       := TRIAN 2 3 3; 
+END_FUZZIFY
+
+// Fuzzificacao - direcao do alvo
+FUZZIFY direcao_alvo	
+    TERM longe_esquerda := TRIAN -5 -5 3;  		
+    TERM esquerda       := TRIAN -2.5 -1.5 -0.5;
+	TERM centro         := TRIAN -1.5 0 1.5;
+    TERM direita        := TRIAN 0.5 1.5 2.5;
+    TERM longe_direita  := TRIAN 3 5 5;
+END_FUZZIFY
+
+
+// Defuzzificacao - velocidade dos motores conforme as entradas
+DEFUZZIFY motor_esquerdo			
+    TERM mover_para_tras   :=  TRIAN -2.5 -2.5 -1;
+	TERM parar             :=  TRIAN -1.5 0 1.5;
+    TERM mover_para_frente :=  TRIAN 1 2.5 2.5;
+	METHOD  : COG;		// Use 'centro Of Gravity' defuzzification method
+	DEFAULT := 0;		// Default value is 0 (if no rule activates defuzzifier)
+END_DEFUZZIFY
+DEFUZZIFY motor_direito			
+    TERM mover_para_tras   :=  TRIAN -2.5 -2.5 -1;
+	TERM parar             :=  TRIAN -1.5 0 1.5;
+    TERM mover_para_frente :=  TRIAN 1 2.5 2.5;
+	METHOD  : COG;
+	DEFAULT := 0;
+END_DEFUZZIFY
+
+// Regras de Inferencia
+RULEBLOCK rules
+	AND  : MIN;	// Use 'min' for 'and'
+	ACT  : MIN;	// Use 'min' activation method
+	ACCU : MAX;	// Use 'max' accumulation method
+	
+	// virar para esquerda: motor_esquerdo IS mover_para_tras, motor_direito IS mover_para_frente;
+	// virar para direita: motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_frente; 
+
+	RULE 1 : IF destino_distancia IS muito_perto AND direcao_alvo IS longe_esquerda
+	         THEN motor_esquerdo IS mover_para_tras, motor_direito IS mover_para_frente;
+    
+    RULE 2 : IF destino_distancia IS muito_perto AND direcao_alvo IS esquerda
+	         THEN motor_esquerdo IS parar, motor_direito IS mover_para_frente;
+	         
+    RULE 3 : IF destino_distancia IS muito_perto AND direcao_alvo IS direita
+	         THEN motor_esquerdo IS mover_para_frente, motor_direito IS parar;
+	         	
+    RULE 4 : IF destino_distancia IS muito_perto AND direcao_alvo IS longe_direita
+	         THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_tras;	
+	
+    RULE 5 : IF destino_distancia IS perto AND direcao_alvo IS longe_esquerda
+	         THEN motor_esquerdo IS mover_para_tras, motor_direito IS mover_para_frente;
+    
+    RULE 6 : IF destino_distancia IS perto AND direcao_alvo IS esquerda
+	         THEN motor_esquerdo IS parar, motor_direito IS mover_para_frente;
+		         
+    RULE 7 : IF destino_distancia IS perto AND direcao_alvo IS direita
+	         THEN motor_esquerdo IS mover_para_frente, motor_direito IS parar;
+	         	
+    RULE 8 : IF destino_distancia IS perto AND direcao_alvo IS longe_direita
+	         THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_tras;	                     
+    
+    RULE 9 : IF destino_distancia IS longe AND direcao_alvo IS longe_esquerda
+	         THEN motor_esquerdo IS mover_para_tras, motor_direito IS mover_para_frente;
+    
+    RULE 10 : IF destino_distancia IS longe AND direcao_alvo IS esquerda
+	          THEN motor_esquerdo IS parar, motor_direito IS mover_para_frente;
+	         	         
+    RULE 11 : IF destino_distancia IS longe AND direcao_alvo IS direita
+	          THEN motor_esquerdo IS mover_para_frente, motor_direito IS parar;
+	         	
+    RULE 12 : IF destino_distancia IS longe AND direcao_alvo IS longe_direita
+	          THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_tras;	   
+        
+    RULE 13 : IF destino_distancia IS muito_perto AND direcao_alvo IS centro
+	          THEN motor_esquerdo IS parar, motor_direito IS parar;
+	         
+    RULE 14 : IF destino_distancia IS perto AND direcao_alvo IS centro
+	          THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_frente;
+	          
+    RULE 15 : IF destino_distancia IS longe AND direcao_alvo IS centro
+	          THEN motor_esquerdo IS mover_para_frente, motor_direito IS mover_para_frente;	         
+	                        
+END_RULEBLOCK
+END_FUNCTION_BLOCK
